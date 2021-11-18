@@ -6,14 +6,12 @@
 package io.debezium.connector.oracle;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.relational.Table;
@@ -40,6 +38,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleSchemaChangeEventEmitter.class);
 
     private final OraclePartition partition;
+    private Map<String, String> sourcePartition;
     private final OracleOffsetContext offsetContext;
     private final TableId tableId;
     private final OracleDatabaseSchema schema;
@@ -55,6 +54,8 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                                           OracleOffsetContext offsetContext, TableId tableId, String sourceDatabaseName,
                                           String objectOwner, String ddlText, OracleDatabaseSchema schema,
                                           Instant changeTime, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+        Map<String, String> sourcePartition = extractBusinessKey(connectorConfig, partition);
+        this.sourcePartition = sourcePartition;
         this.partition = partition;
         this.offsetContext = offsetContext;
         this.tableId = tableId;
@@ -66,6 +67,15 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         this.changeTime = changeTime;
         this.streamingMetrics = streamingMetrics;
         this.filters = connectorConfig.getTableFilters().dataCollectionFilter();
+    }
+
+    private Map<String, String> extractBusinessKey(OracleConnectorConfig connectorConfig, OraclePartition partition) {
+        Map<String, String> sourcePartition = partition.getSourcePartition();
+        Configuration config = connectorConfig.getConfig();
+        Map<String, String> configs = config.asMap();
+        String businessKey = configs.get("name");// get name as business key
+        sourcePartition.put(SourceInfo.BUSINESS_KEY, businessKey);
+        return sourcePartition;
     }
 
     @Override
@@ -100,13 +110,13 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 events.forEach(event -> {
                     switch (event.type()) {
                         case CREATE_TABLE:
-                            changeEvents.add(createTableEvent(partition, (TableCreatedEvent) event));
+                            changeEvents.add(createTableEvent(sourcePartition, (TableCreatedEvent) event));
                             break;
                         case ALTER_TABLE:
-                            changeEvents.add(alterTableEvent(partition, (TableAlteredEvent) event));
+                            changeEvents.add(alterTableEvent(sourcePartition, (TableAlteredEvent) event));
                             break;
                         case DROP_TABLE:
-                            changeEvents.add(dropTableEvent(partition, tableBefore, (TableDroppedEvent) event));
+                            changeEvents.add(dropTableEvent(sourcePartition, tableBefore, (TableDroppedEvent) event));
                             break;
                         default:
                             LOGGER.info("Skipped DDL event type {}: {}", event.type(), ddlText);
@@ -121,10 +131,10 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         }
     }
 
-    private SchemaChangeEvent createTableEvent(OraclePartition partition, TableCreatedEvent event) {
+    private SchemaChangeEvent createTableEvent(Map<String, String> sourcePartition, TableCreatedEvent event) {
         offsetContext.tableEvent(tableId, changeTime);
         return new SchemaChangeEvent(
-                partition.getSourcePartition(),
+                sourcePartition,
                 offsetContext.getOffset(),
                 offsetContext.getSourceInfo(),
                 tableId.catalog(),
@@ -135,14 +145,14 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 false);
     }
 
-    private SchemaChangeEvent alterTableEvent(OraclePartition partition, TableAlteredEvent event) {
+    private SchemaChangeEvent alterTableEvent(Map<String, String> sourcePartition, TableAlteredEvent event) {
         final Set<TableId> tableIds = new HashSet<>();
         tableIds.add(tableId);
         tableIds.add(event.tableId());
 
         offsetContext.tableEvent(tableIds, changeTime);
         return new SchemaChangeEvent(
-                partition.getSourcePartition(),
+                sourcePartition,
                 offsetContext.getOffset(),
                 offsetContext.getSourceInfo(),
                 tableId.catalog(),
@@ -153,10 +163,10 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 false);
     }
 
-    private SchemaChangeEvent dropTableEvent(OraclePartition partition, Table tableSchemaBeforeDrop, TableDroppedEvent event) {
+    private SchemaChangeEvent dropTableEvent(Map<String, String> sourcePartition, Table tableSchemaBeforeDrop, TableDroppedEvent event) {
         offsetContext.tableEvent(tableId, changeTime);
         return new SchemaChangeEvent(
-                partition.getSourcePartition(),
+                sourcePartition,
                 offsetContext.getOffset(),
                 offsetContext.getSourceInfo(),
                 tableId.catalog(),

@@ -27,6 +27,7 @@ public class MySqlSourceInfoStructMaker extends AbstractSourceInfoStructMaker<So
                 .field(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
                 .field(SourceInfo.THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.QUERY_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.BUSINESS_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
     }
 

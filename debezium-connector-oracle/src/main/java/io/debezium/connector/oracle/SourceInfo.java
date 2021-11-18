@@ -24,6 +24,8 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String LCR_POSITION_KEY = "lcr_position";
     public static final String SNAPSHOT_KEY = "snapshot";
 
+    public static final String BUSINESS_KEY = "business_key";
+
     private Scn scn;
     private Scn commitScn;
     private String lcrPosition;

@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
@@ -297,7 +298,12 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private void emitChangeEvent(MySqlPartition partition, MySqlOffsetContext offset, List<SchemaChangeEvent> schemaChangeEvents,
                                  final String sanitizedDbName, Event event, TableId tableId, SchemaChangeEventType type,
                                  boolean snapshot) {
-        schemaChangeEvents.add(new SchemaChangeEvent(partition.getSourcePartition(), offset.getOffset(), offset.getSourceInfo(),
+        Map<String, String> sourcePartition = partition.getSourcePartition();
+        Configuration config = connectorConfig.getConfig();
+        Map<String, String> configs = config.asMap();
+        String businessKey = configs.get("name");// get name as business key
+        sourcePartition.put(SourceInfo.BUSINESS_KEY, businessKey);
+        schemaChangeEvents.add(new SchemaChangeEvent(sourcePartition, offset.getOffset(), offset.getSourceInfo(),
                 sanitizedDbName, null, event.statement(), tableId != null ? tableFor(tableId) : null, type, snapshot));
     }
 

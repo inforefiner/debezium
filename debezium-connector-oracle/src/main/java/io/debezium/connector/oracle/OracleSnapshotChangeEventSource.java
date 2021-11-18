@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.Configuration;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -254,8 +256,10 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
                                                     Table table)
             throws SQLException {
+        OraclePartition partition = snapshotContext.partition;
+        Map<String, String> sourcePartition = extractBusinessKey(connectorConfig, partition);
         return new SchemaChangeEvent(
-                snapshotContext.partition.getSourcePartition(),
+                sourcePartition,
                 snapshotContext.offset.getOffset(),
                 snapshotContext.offset.getSourceInfo(),
                 snapshotContext.catalogName,
@@ -304,5 +308,14 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         public OracleSnapshotContext(OraclePartition partition, String catalogName) throws SQLException {
             super(partition, catalogName);
         }
+    }
+
+    private Map<String, String> extractBusinessKey(OracleConnectorConfig connectorConfig, OraclePartition partition) {
+        Map<String, String> sourcePartition = partition.getSourcePartition();
+        Configuration config = connectorConfig.getConfig();
+        Map<String, String> configs = config.asMap();
+        String businessKey = configs.get("name");// get name as business key
+        sourcePartition.put(SourceInfo.BUSINESS_KEY, businessKey);
+        return sourcePartition;
     }
 }
