@@ -303,6 +303,10 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         Map<String, String> configs = config.asMap();
         String businessKey = configs.get("name");// get name as business key
         sourcePartition.put(SourceInfo.BUSINESS_KEY, businessKey);
+        if (tableId != null) {
+            sourcePartition.put(SourceInfo.CATALOG_KEY, tableId.catalog());
+            sourcePartition.put(SourceInfo.TABLE_KEY, tableId.table());
+        }
         schemaChangeEvents.add(new SchemaChangeEvent(sourcePartition, offset.getOffset(), offset.getSourceInfo(),
                 sanitizedDbName, null, event.statement(), tableId != null ? tableFor(tableId) : null, type, snapshot));
     }

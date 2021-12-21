@@ -257,7 +257,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                                                     Table table)
             throws SQLException {
         OraclePartition partition = snapshotContext.partition;
-        Map<String, String> sourcePartition = extractBusinessKey(connectorConfig, partition);
+        Map<String, String> sourcePartition = extractBusinessKey(connectorConfig, partition, table.id());
         return new SchemaChangeEvent(
                 sourcePartition,
                 snapshotContext.offset.getOffset(),
@@ -310,12 +310,18 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         }
     }
 
-    private Map<String, String> extractBusinessKey(OracleConnectorConfig connectorConfig, OraclePartition partition) {
+    private Map<String, String> extractBusinessKey(OracleConnectorConfig connectorConfig,
+                                                   OraclePartition partition,
+                                                   TableId tableId) {
         Map<String, String> sourcePartition = partition.getSourcePartition();
         Configuration config = connectorConfig.getConfig();
         Map<String, String> configs = config.asMap();
         String businessKey = configs.get("name");// get name as business key
         sourcePartition.put(SourceInfo.BUSINESS_KEY, businessKey);
+        if (tableId != null) {
+            sourcePartition.put(SourceInfo.CATALOG_KEY, tableId.catalog());
+            sourcePartition.put(SourceInfo.TABLE_KEY, tableId.table());
+        }
         return sourcePartition;
     }
 }

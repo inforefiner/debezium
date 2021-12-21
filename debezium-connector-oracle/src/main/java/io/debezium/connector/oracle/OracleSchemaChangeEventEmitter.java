@@ -54,7 +54,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                                           OracleOffsetContext offsetContext, TableId tableId, String sourceDatabaseName,
                                           String objectOwner, String ddlText, OracleDatabaseSchema schema,
                                           Instant changeTime, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
-        Map<String, String> sourcePartition = extractBusinessKey(connectorConfig, partition);
+        Map<String, String> sourcePartition = extractBusinessKey(connectorConfig, partition, tableId);
         this.sourcePartition = sourcePartition;
         this.partition = partition;
         this.offsetContext = offsetContext;
@@ -69,12 +69,18 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         this.filters = connectorConfig.getTableFilters().dataCollectionFilter();
     }
 
-    private Map<String, String> extractBusinessKey(OracleConnectorConfig connectorConfig, OraclePartition partition) {
+    private Map<String, String> extractBusinessKey(OracleConnectorConfig connectorConfig,
+                                                   OraclePartition partition,
+                                                   TableId tableId) {
         Map<String, String> sourcePartition = partition.getSourcePartition();
         Configuration config = connectorConfig.getConfig();
         Map<String, String> configs = config.asMap();
         String businessKey = configs.get("name");// get name as business key
         sourcePartition.put(SourceInfo.BUSINESS_KEY, businessKey);
+        if (tableId != null) {
+            sourcePartition.put(SourceInfo.CATALOG_KEY, tableId.catalog());
+            sourcePartition.put(SourceInfo.TABLE_KEY, tableId.table());
+        }
         return sourcePartition;
     }
 

@@ -28,6 +28,8 @@ public class MySqlSourceInfoStructMaker extends AbstractSourceInfoStructMaker<So
                 .field(SourceInfo.THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.QUERY_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.BUSINESS_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.CATALOG_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.TABLE_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
     }
 

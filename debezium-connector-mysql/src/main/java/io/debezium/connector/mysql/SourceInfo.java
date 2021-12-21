@@ -103,6 +103,8 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String QUERY_KEY = "query";
 
     public static final String BUSINESS_KEY = "business_key";
+    public static final String CATALOG_KEY = "catalog_key";
+    public static final String TABLE_KEY = "table_key";
 
     private String currentGtid;
     private String currentBinlogFilename;

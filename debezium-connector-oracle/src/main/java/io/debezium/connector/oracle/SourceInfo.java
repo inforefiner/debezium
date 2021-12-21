@@ -25,6 +25,8 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String SNAPSHOT_KEY = "snapshot";
 
     public static final String BUSINESS_KEY = "business_key";
+    public static final String CATALOG_KEY = "catalog_key";
+    public static final String TABLE_KEY = "table_key";
 
     private Scn scn;
     private Scn commitScn;
