@@ -161,7 +161,8 @@ public class SpecialValueDecimal implements Serializable {
                 return Decimal.builder(scale)
                         .parameter(PRECISION_PARAMETER_KEY, String.valueOf(precision));
             case STRING:
-                return SchemaBuilder.string();
+                return SchemaBuilder.string().parameter(Decimal.SCALE_FIELD,
+                        String.valueOf(scale)).name("com.info.kafka.connect.data.Decimal").version(1);
         }
         throw new IllegalArgumentException("Unknown decimalMode");
     }

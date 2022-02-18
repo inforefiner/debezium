@@ -7,6 +7,9 @@ package io.debezium.relational.history;
 
 import java.util.function.BiFunction;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.document.Document;
 
 /**
@@ -17,6 +20,7 @@ import io.debezium.document.Document;
  */
 public class HistoryRecordComparator {
 
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
     /**
      * A comparator instance that requires the {@link HistoryRecord#source() records' sources} to be the same and considers only
      * those fields that are in both records' {@link HistoryRecord#position() positions}.
@@ -49,7 +53,13 @@ public class HistoryRecordComparator {
      *         otherwise
      */
     public boolean isAtOrBefore(HistoryRecord record1, HistoryRecord record2) {
-        return isSameSource(record1.source(), record2.source()) && isPositionAtOrBefore(record1.position(), record2.position());
+        logger.info("method :{} record1 :{} , record2 :{}", "isAtOrBefore", record1, record2);
+        boolean sameSource = isSameSource(record1.source(), record2.source());
+        boolean positionAtOrBefore = isPositionAtOrBefore(record1.position(), record2.position());
+
+        logger.info("isSameSource value :{} ", sameSource);
+        logger.info("isPositionAtOrBefore value :{} ", positionAtOrBefore);
+        return sameSource && positionAtOrBefore;
     }
 
     protected boolean isPositionAtOrBefore(Document position1, Document position2) {
@@ -57,6 +67,7 @@ public class HistoryRecordComparator {
     }
 
     protected boolean isSameSource(Document source1, Document source2) {
-        return source1.equals(source2);
+        logger.info("source1 class:{},source2 class:{}", source1.getClass(), source2.getClass());
+        return source1.equalsSource(source2);
     }
 }

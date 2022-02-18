@@ -1209,4 +1209,6 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      *         is less than, equal to, or greater than the specified object.
      */
     int compareTo(Document that, boolean enforceFieldOrder);
+
+    boolean equalsSource(Object obj);
 }
