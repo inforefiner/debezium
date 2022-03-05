@@ -53,12 +53,12 @@ public class HistoryRecordComparator {
      *         otherwise
      */
     public boolean isAtOrBefore(HistoryRecord record1, HistoryRecord record2) {
-        logger.info("method :{} record1 :{} , record2 :{}", "isAtOrBefore", record1, record2);
+        logger.debug("method :{} record1 :{} , record2 :{}", "isAtOrBefore", record1, record2);
         boolean sameSource = isSameSource(record1.source(), record2.source());
         boolean positionAtOrBefore = isPositionAtOrBefore(record1.position(), record2.position());
 
-        logger.info("isSameSource value :{} ", sameSource);
-        logger.info("isPositionAtOrBefore value :{} ", positionAtOrBefore);
+        logger.debug("isSameSource value :{} ", sameSource);
+        logger.debug("isPositionAtOrBefore value :{} ", positionAtOrBefore);
         return sameSource && positionAtOrBefore;
     }
 
