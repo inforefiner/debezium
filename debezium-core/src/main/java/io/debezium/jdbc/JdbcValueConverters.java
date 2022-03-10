@@ -18,11 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Types;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.OffsetDateTime;
-import java.time.OffsetTime;
-import java.time.ZoneOffset;
+import java.time.*;
 import java.time.temporal.TemporalAdjuster;
 import java.util.Base64;
 import java.util.Base64.Encoder;
@@ -96,6 +92,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     private final String fallbackTimeWithTimeZone;
     protected final boolean adaptiveTimePrecisionMode;
     protected final boolean adaptiveTimeMicrosecondsPrecisionMode;
+    protected final boolean connectInfomover;
     protected final DecimalMode decimalMode;
     private final TemporalAdjuster adjuster;
     protected final BigIntUnsignedMode bigIntUnsignedMode;
@@ -130,6 +127,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                                TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode, BinaryHandlingMode binaryMode) {
         this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
         this.adaptiveTimePrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE);
+        this.connectInfomover = "connect_infomover".equals(temporalPrecisionMode);
         this.adaptiveTimeMicrosecondsPrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
         this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
         this.adjuster = adjuster;
@@ -164,6 +162,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
             // Fixed-length binary values ...
             case Types.BLOB:
+                return binaryMode.getSchema().name("com.info.kafka.connect.data.Blob");
             case Types.BINARY:
                 return binaryMode.getSchema();
 
@@ -191,6 +190,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 // values are single precision floating point number which supports 7 digits of mantissa.
                 return SchemaBuilder.float32();
             case Types.FLOAT:
+                return FloatData.builder(decimalMode);
             case Types.DOUBLE:
                 // values are double precision floating point number which supports 15 digits of mantissa.
                 return SchemaBuilder.float64();
@@ -200,16 +200,21 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
             // Fixed-length string values
             case Types.CHAR:
+                return SchemaBuilder.string().name("com.info.kafka.connect.data.Char").parameter("length", String.valueOf(column.length()));
             case Types.NCHAR:
+                return SchemaBuilder.string().name("com.info.kafka.connect.data.NChar").parameter("length", String.valueOf(column.length()));
             case Types.NVARCHAR:
+                return SchemaBuilder.string().name("com.info.kafka.connect.data.NVarChar").parameter("length", String.valueOf(column.length()));
             case Types.LONGNVARCHAR:
             case Types.NCLOB:
                 return SchemaBuilder.string();
 
             // Variable-length string values
             case Types.VARCHAR:
+                return SchemaBuilder.string().name("com.info.kafka.connect.data.VarChar").parameter("length", String.valueOf(column.length()));
             case Types.LONGVARCHAR:
             case Types.CLOB:
+                return SchemaBuilder.string().name("com.info.kafka.connect.data.Clob");
             case Types.DATALINK:
                 return SchemaBuilder.string();
             case Types.SQLXML:
@@ -298,7 +303,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
             // Numeric decimal numbers
             case Types.FLOAT:
-                return (data) -> convertFloat(column, fieldDefn, data);
+                switch (decimalMode) {
+                    case STRING:
+                        return (data) -> convertString(column, fieldDefn, data);
+                    default:
+                        return (data) -> convertFloat(column, fieldDefn, data);
+                }
             case Types.DOUBLE:
                 return (data) -> convertDouble(column, fieldDefn, data);
             case Types.REAL:
@@ -389,7 +399,15 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, fallbackTimestampWithTimeZone, (r) -> {
             try {
-                r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster));
+
+                String s = ZonedTimestamp.toIsoString(data, defaultOffset, adjuster);
+                if (s != null && !"".equals(s)) {
+                    s = s.replace("'T'", " ");
+                    s = s.replace("'Z'", "");
+                    s = s.replace("T", " ");
+                    s = s.replace("Z", "");
+                }
+                r.deliver(s);
             }
             catch (IllegalArgumentException e) {
             }

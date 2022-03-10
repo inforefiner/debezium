@@ -120,6 +120,37 @@ final class BasicDocument implements Document {
         return 0;
     }
 
+    @Override
+    public boolean equalsSource(Object obj) {
+        if (obj instanceof BasicDocument) {
+            BasicDocument that = (BasicDocument) obj;
+            if (fields != null && fields.containsKey("table_key")) {
+                fields.remove("table_key");
+            }
+            if (fields != null && fields.containsKey("catalog_key")) {
+                fields.remove("catalog_key");
+            }
+            if (fields != null && fields.containsKey("business_key")) {
+                fields.remove("business_key");
+            }
+            if (that.fields != null && that.fields.containsKey("table_key")) {
+                that.fields.remove("table_key");
+            }
+            if (that.fields != null && that.fields.containsKey("catalog_key")) {
+                that.fields.remove("catalog_key");
+            }
+            if (that.fields != null && that.fields.containsKey("business_key")) {
+                that.fields.remove("business_key");
+            }
+            return fields.equals(that.fields);
+        }
+        if (obj instanceof Document) {
+            Document that = (Document) obj;
+            return this.hasAll(that) && that.hasAll(this);
+        }
+        return false;
+    }
+
     /**
      * Semantically compare two values. This includes comparing numeric values of different types (e.g., an integer and long),
      * and {@code null} and {@link Value#nullValue()} references.
