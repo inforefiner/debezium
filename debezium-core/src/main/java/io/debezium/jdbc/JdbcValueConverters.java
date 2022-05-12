@@ -433,7 +433,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, fallbackTimeWithTimeZone, (r) -> {
             try {
-                r.deliver(ZonedTime.toIsoString(data, defaultOffset, adjuster));
+                String s = ZonedTime.toIsoString(data, defaultOffset, adjuster);
+                if (s != null && !"".equals(s)) {
+                    s = s.replace("'T'", " ");
+                    s = s.replace("'Z'", "");
+                    s = s.replace("T", " ");
+                    s = s.replace("Z", "");
+                }
+                r.deliver(s);
             }
             catch (IllegalArgumentException e) {
             }

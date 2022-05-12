@@ -11,10 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.*;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.slf4j.Logger;
@@ -370,8 +367,26 @@ public class TableSchemaBuilder {
 
             // if the default value is provided
             if (column.hasDefaultValue()) {
-                fieldBuilder
-                        .defaultValue(customConverterRegistry.getValueConverter(table.id(), column).orElse(ValueConverter.passthrough()).convert(column.defaultValue()));
+                /*
+                 * LOGGER.info("Adding default value {} for column {}.{}", column.defaultValue(), table.id(), column.name());
+                 * LOGGER.info("schema: {}", builder.schema());
+                 * LOGGER.info("schema name: {}", builder.schema().name());
+                 * LOGGER.info("schema build: {}", fieldBuilder.build());
+                 * LOGGER.info("schema build name: {}", fieldBuilder.build().name());
+                 */
+                if (org.apache.kafka.connect.data.Timestamp.LOGICAL_NAME.equals(fieldBuilder.name())
+                        || org.apache.kafka.connect.data.Time.LOGICAL_NAME.equals(fieldBuilder.name())
+                        || Decimal.LOGICAL_NAME.equals(fieldBuilder.name())
+                        || "com.info.kafka.connect.data.Decimal".equals(fieldBuilder.name())
+                        || org.apache.kafka.connect.data.Date.LOGICAL_NAME.equals(fieldBuilder.name())) {
+                    LOGGER.debug("Using default value {} for column {}.{} of type {}", column.defaultValue(), table.id(), column.name(), column.typeName());
+                    LOGGER.debug("This is a workaround for a bug, Skipping default value for timestamp columns");
+                }
+                else {
+                    fieldBuilder
+                            .defaultValue(
+                                    customConverterRegistry.getValueConverter(table.id(), column).orElse(ValueConverter.passthrough()).convert(column.defaultValue()));
+                }
             }
 
             builder.field(fieldNamer.fieldNameFor(column), fieldBuilder.build());
