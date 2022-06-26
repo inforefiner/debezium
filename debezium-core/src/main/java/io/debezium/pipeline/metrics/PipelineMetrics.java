@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.data.Envelope;
 import io.debezium.metrics.Metrics;
 import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -30,6 +31,9 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
 
     protected final EventMetadataProvider metadataProvider;
     protected final AtomicLong totalNumberOfEventsSeen = new AtomicLong();
+    protected final AtomicLong totalNumberOfCreateEventsSeen = new AtomicLong();
+    protected final AtomicLong totalNumberOfUpdateEventsSeen = new AtomicLong();
+    protected final AtomicLong totalNumberOfDeleteEventsSeen = new AtomicLong();
     private final AtomicLong numberOfEventsFiltered = new AtomicLong();
     protected final AtomicLong numberOfErroneousEvents = new AtomicLong();
     protected final AtomicLong lastEventTimestamp = new AtomicLong(-1);
@@ -49,26 +53,41 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
     }
 
     @Override
-    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
-        updateCommonEventMetrics();
+    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Envelope.Operation operation) {
+        updateCommonEventMetrics(operation);
         lastEvent = metadataProvider.toSummaryString(source, offset, key, value);
     }
 
-    private void updateCommonEventMetrics() {
+    private void updateCommonEventMetrics(Envelope.Operation operation) {
         totalNumberOfEventsSeen.incrementAndGet();
         lastEventTimestamp.set(clock.currentTimeInMillis());
+        if (operation != null) {
+            switch (operation) {
+                case CREATE:
+                    totalNumberOfCreateEventsSeen.incrementAndGet();
+                    break;
+                case UPDATE:
+                    totalNumberOfUpdateEventsSeen.incrementAndGet();
+                    break;
+                case DELETE:
+                    totalNumberOfDeleteEventsSeen.incrementAndGet();
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 
     @Override
-    public void onFilteredEvent(String event) {
+    public void onFilteredEvent(String event, Envelope.Operation operation) {
         numberOfEventsFiltered.incrementAndGet();
-        updateCommonEventMetrics();
+        updateCommonEventMetrics(operation);
     }
 
     @Override
-    public void onErroneousEvent(String event) {
+    public void onErroneousEvent(String event, Envelope.Operation operation) {
         numberOfErroneousEvents.incrementAndGet();
-        updateCommonEventMetrics();
+        updateCommonEventMetrics(operation);
     }
 
     @Override
@@ -88,6 +107,21 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
     @Override
     public long getTotalNumberOfEventsSeen() {
         return totalNumberOfEventsSeen.get();
+    }
+
+    @Override
+    public long getTotalNumberOfCreateEventsSeen() {
+        return totalNumberOfCreateEventsSeen.get();
+    }
+
+    @Override
+    public long getTotalNumberOfUpdateEventsSeen() {
+        return totalNumberOfUpdateEventsSeen.get();
+    }
+
+    @Override
+    public long getTotalNumberOfDeleteEventsSeen() {
+        return totalNumberOfDeleteEventsSeen.get();
     }
 
     @Override

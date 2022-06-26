@@ -7,6 +7,7 @@ package io.debezium.pipeline.source.spi;
 
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.data.Envelope;
 import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -23,17 +24,17 @@ public interface DataChangeEventListener {
     /**
      * Invoked if an event is processed for a captured table.
      */
-    void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) throws InterruptedException;
+    void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Envelope.Operation operation) throws InterruptedException;
 
     /**
      * Invoked for events pertaining to non-captured tables.
      */
-    void onFilteredEvent(String event);
+    void onFilteredEvent(String event, Envelope.Operation operation);
 
     /**
      * Invoked for events that cannot be processed.
      */
-    void onErroneousEvent(String event);
+    void onErroneousEvent(String event, Envelope.Operation operation);
 
     /**
      * Invoked for events that represent a connector event.
@@ -42,11 +43,11 @@ public interface DataChangeEventListener {
 
     static DataChangeEventListener NO_OP = new DataChangeEventListener() {
         @Override
-        public void onFilteredEvent(String event) {
+        public void onFilteredEvent(String event, Envelope.Operation operation) {
         }
 
         @Override
-        public void onErroneousEvent(String event) {
+        public void onErroneousEvent(String event, Envelope.Operation operation) {
         }
 
         @Override
@@ -54,7 +55,7 @@ public interface DataChangeEventListener {
         }
 
         @Override
-        public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
+        public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Envelope.Operation operation) {
         }
     };
 }

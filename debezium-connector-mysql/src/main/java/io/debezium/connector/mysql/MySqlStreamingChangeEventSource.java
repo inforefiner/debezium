@@ -416,7 +416,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      */
     protected void handleServerIncident(MySqlOffsetContext offsetContext, Event event) {
         if (event.getData() instanceof EventDataDeserializationExceptionData) {
-            metrics.onErroneousEvent("source = " + event.toString());
+            metrics.onErroneousEvent("source = " + event.toString(), null);
             EventDataDeserializationExceptionData data = event.getData();
 
             EventHeaderV4 eventHeader = (EventHeaderV4) data.getCause().getEventHeader(); // safe cast, instantiated that ourselves
@@ -627,7 +627,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             LOGGER.debug("Received update table metadata event: {}", event);
         }
         else {
-            informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, "update table metadata");
+            informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, "update table metadata", null);
         }
     }
 
@@ -636,10 +636,10 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * don't know, either ignore that event or raise a warning or error as per the
      * {@link MySqlConnectorConfig#INCONSISTENT_SCHEMA_HANDLING_MODE} configuration.
      */
-    private void informAboutUnknownTableIfRequired(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, TableId tableId, String typeToLog)
+    private void informAboutUnknownTableIfRequired(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, TableId tableId, String typeToLog, Operation operation)
             throws InterruptedException {
         if (tableId != null && connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-            metrics.onErroneousEvent("source = " + tableId + ", event " + event);
+            metrics.onErroneousEvent("source = " + tableId + ", event " + event, operation);
             EventHeaderV4 eventHeader = event.getHeader();
 
             if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
@@ -650,16 +650,14 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                         eventHeader.getNextPosition(), offsetContext.getSource().binlogFilename());
                 throw new DebeziumException("Encountered change event for table " + tableId
                         + " whose schema isn't known to this connector");
-            }
-            else if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.WARN) {
+            } else if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.WARN) {
                 LOGGER.warn(
                         "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}"
                                 + "The event will be ignored.{}"
                                 + "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
                         event, offsetContext.getOffset(), tableId, System.lineSeparator(), System.lineSeparator(),
                         eventHeader.getPosition(), eventHeader.getNextPosition(), offsetContext.getSource().binlogFilename());
-            }
-            else {
+            } else {
                 LOGGER.debug(
                         "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}"
                                 + "The event will be ignored.{}"
@@ -667,10 +665,9 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                         event, offsetContext.getOffset(), tableId, System.lineSeparator(), System.lineSeparator(),
                         eventHeader.getPosition(), eventHeader.getNextPosition(), offsetContext.getSource().binlogFilename());
             }
-        }
-        else {
+        } else {
             LOGGER.debug("Filtering {} event: {} for non-monitored table {}", typeToLog, event, tableId);
-            metrics.onFilteredEvent("source = " + tableId);
+            metrics.onFilteredEvent("source = " + tableId, operation);
             eventDispatcher.dispatchFilteredEvent(partition, offsetContext);
         }
     }
@@ -762,7 +759,16 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             }
         }
         else {
-            informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, changeType + " row");
+            Operation tmp = null;
+            if ("insert".equals(changeType)) {
+                tmp = Operation.CREATE;
+            } else if ("update".equals(changeType)) {
+                tmp = Operation.UPDATE;
+            } else if ("delete".equals(changeType)) {
+                tmp = Operation.DELETE;
+            }
+
+            informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, changeType + " row", tmp);
         }
         startingRowNumber = 0;
     }

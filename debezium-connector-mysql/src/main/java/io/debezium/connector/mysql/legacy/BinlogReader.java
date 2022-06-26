@@ -672,7 +672,7 @@ public class BinlogReader extends AbstractReader {
      */
     protected void handleServerIncident(Event event) {
         if (event.getData() instanceof EventDataDeserializationExceptionData) {
-            metrics.onErroneousEvent("source = " + event.toString());
+            metrics.onErroneousEvent("source = " + event.toString(), null);
             EventDataDeserializationExceptionData data = event.getData();
 
             EventHeaderV4 eventHeader = (EventHeaderV4) data.getCause().getEventHeader(); // safe cast, instantiated that ourselves
@@ -873,7 +873,7 @@ public class BinlogReader extends AbstractReader {
      */
     private void informAboutUnknownTableIfRequired(Event event, TableId tableId, String typeToLog) {
         if (tableId != null && context.dbSchema().isTableCaptured(tableId)) {
-            metrics.onErroneousEvent("source = " + tableId + ", event " + event);
+            metrics.onErroneousEvent("source = " + tableId + ", event " + event, null);
             EventHeaderV4 eventHeader = event.getHeader();
 
             if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
@@ -923,7 +923,7 @@ public class BinlogReader extends AbstractReader {
         }
         else {
             logger.debug("Filtering {} event: {} for non-monitored table {}", typeToLog, event, tableId);
-            metrics.onFilteredEvent("source = " + tableId);
+            metrics.onFilteredEvent("source = " + tableId, null);
         }
     }
 
