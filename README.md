@@ -162,6 +162,8 @@ See [PostgreSQL on Amazon RDS](debezium-connector-postgres/RDS.md) for details o
 
 ## Contributing
 
+Add some test for  local.
+
 The Debezium community welcomes anyone that wants to help out in any way, whether that includes reporting problems, helping with documentation, or contributing code changes to fix bugs, add tests, or implement new features. See [this document](CONTRIBUTE.md) for details.
 
 A big thank you to all the Debezium contributors!
