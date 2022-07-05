@@ -143,6 +143,7 @@
         <module>debezium-connector-postgres</module>
         <module>debezium-connector-mongodb</module>
         <module>debezium-connector-sqlserver</module>
+        <module>debezium-connector-kingbasees</module>
         <module>debezium-microbenchmark</module>
         <module>debezium-quarkus-outbox</module>
         <module>debezium-scripting</module>
