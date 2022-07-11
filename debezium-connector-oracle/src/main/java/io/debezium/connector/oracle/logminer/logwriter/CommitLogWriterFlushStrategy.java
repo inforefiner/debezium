@@ -9,6 +9,7 @@ import java.sql.SQLException;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.jdbc.JdbcConfiguration;
 
@@ -39,6 +40,14 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
         this.connection = connection;
         this.closeConnectionOnClose = false;
         createFlushTableIfNotExists();
+    }
+
+    public CommitLogWriterFlushStrategy(OracleConnection connection, OracleConnectorConfig connectorConfig) {
+        this.connection = connection;
+        this.closeConnectionOnClose = false;
+        if (!OracleConnectorConfig.LogMiningStrategy.FLASH_BACK_QUERY.equals(connectorConfig.getLogMiningStrategy())) {
+            createFlushTableIfNotExists();
+        }
     }
 
     /**

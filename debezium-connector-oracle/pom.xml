@@ -150,7 +150,7 @@
                     </systemProperties>
                 </configuration>
             </plugin>
-            <plugin>
+            <!--<plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <executions>
@@ -177,7 +177,7 @@
                         <log.mining.buffer.type>${log.mining.buffer.type.name}</log.mining.buffer.type>
                     </systemPropertyVariables>
                 </configuration>
-            </plugin>
+            </plugin>-->
         </plugins>
     </build>
 

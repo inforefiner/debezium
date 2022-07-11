@@ -71,7 +71,15 @@ public class LogMinerHelper {
         for (String file : logFilesNames) {
             LOGGER.trace("Adding log file {} to mining session", file);
             String addLogFileStatement = SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", file);
-            executeCallableStatement(connection, addLogFileStatement);
+            try {
+                executeCallableStatement(connection, addLogFileStatement);
+            }
+            catch (Exception exception) {
+                if (exception.getMessage().contains("ORA-01289")) {
+                    continue;
+                }
+            }
+
         }
 
         LOGGER.debug("Last mined SCN: {}, Log file list to mine: {}\n", lastProcessedScn, logFilesNames);

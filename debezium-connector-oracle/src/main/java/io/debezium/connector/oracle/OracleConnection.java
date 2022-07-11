@@ -345,6 +345,15 @@ public class OracleConnection extends JdbcConnection {
         });
     }
 
+    public Scn getFlashBackCurrentScn() throws SQLException {
+        return queryAndMap("SELECT MAX(COMMIT_SCN) as max_scn FROM FLASHBACK_TRANSACTION_QUERY", (rs) -> {
+            if (rs.next()) {
+                return Scn.valueOf(rs.getString(1));
+            }
+            throw new IllegalStateException("Could not get SCN");
+        });
+    }
+
     /**
      * Get the maximum system change number in the archive logs.
      *

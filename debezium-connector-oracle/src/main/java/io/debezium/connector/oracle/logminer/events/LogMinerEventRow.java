@@ -37,7 +37,7 @@ public class LogMinerEventRow {
      * but initialized with values from each row without creating multiple objects repeatedly
      * during the result-set iteration.
      */
-    private static final LogMinerEventRow row = new LogMinerEventRow();
+    // private static final LogMinerEventRow row = new LogMinerEventRow();
 
     private static final int SCN = 1;
     private static final int SQL_REDO = 2;
@@ -68,6 +68,8 @@ public class LogMinerEventRow {
     private String rsId;
     private long hash;
     private String redoSql;
+    private String undoSql;
+    private Scn commitScn;
 
     public Scn getScn() {
         return scn;
@@ -125,6 +127,14 @@ public class LogMinerEventRow {
         return redoSql;
     }
 
+    public String getUndoSql() {
+        return undoSql;
+    }
+
+    public Scn getCommitScn() {
+        return commitScn;
+    }
+
     /**
      * Returns a {@link LogMinerEventRow} instance based on the current row of the JDBC {@link ResultSet}.
      *
@@ -139,7 +149,14 @@ public class LogMinerEventRow {
      * @throws SQLException if there was a problem reading the result set
      */
     public static LogMinerEventRow fromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
+        LogMinerEventRow row = new LogMinerEventRow();
         row.initializeFromResultSet(resultSet, catalogName, isTxIdRawValue);
+        return row;
+    }
+
+    public static LogMinerEventRow fromResultSetByFlashBack(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
+        LogMinerEventRow row = new LogMinerEventRow();
+        row.initializeFromResultSetFlashBack(resultSet, catalogName, isTxIdRawValue);
         return row;
     }
 
@@ -153,7 +170,7 @@ public class LogMinerEventRow {
      */
     private void initializeFromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
         // First reset the internal state
-        reset();
+        // reset();
 
         // Initialize the state from the result set
         this.scn = getScn(resultSet);
@@ -169,6 +186,63 @@ public class LogMinerEventRow {
         this.rsId = resultSet.getString(RS_ID);
         this.hash = resultSet.getLong(HASH);
         this.redoSql = getSqlRedo(resultSet);
+        if (this.tableName != null) {
+            this.tableId = new TableId(catalogName, tablespaceName, tableName);
+        }
+    }
+
+    /**
+     * Initializes the instance from the JDBC {@link ResultSet}.
+     *
+     * @param resultSet the result set to be read, should never be {@code null}
+     * @param catalogName the catalog name, should never be {@code null}
+     * @param isTxIdRawValue whether the transaction id should be read as a raw value or not
+     * @throws SQLException if there was a problem reading the result set
+     */
+    private void initializeFromResultSetFlashBack(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
+        // First reset the internal state
+        // reset();
+
+        // Initialize the state from the result set
+        this.scn = getStartScn(resultSet);
+        this.commitScn = getCommitScn(resultSet);
+        this.tableName = resultSet.getString("TABLE_NAME");
+        this.tablespaceName = resultSet.getString("TABLE_OWNER");
+        String operation = resultSet.getString("OPERATION");
+        if ("INSERT".equals(operation)) {
+            this.eventType = EventType.INSERT;
+        }
+        else if ("DELETE".equals(operation)) {
+            this.eventType = EventType.DELETE;
+        }
+        else if ("UPDATE".equals(operation)) {
+            this.eventType = EventType.UPDATE;
+        }
+        else {
+            this.eventType = EventType.UNSUPPORTED;
+        }
+
+        this.changeTime = null;
+        this.transactionId = getTransactionId(resultSet);
+        // this.operation = resultSet.getString("OPERATION");
+        if ("INSERT".equals(operation)) {
+            this.operation = EventType.INSERT.name();
+        }
+        else if ("DELETE".equals(operation)) {
+            this.operation = EventType.DELETE.name();
+        }
+        else if ("UPDATE".equals(operation)) {
+            this.operation = EventType.UPDATE.name();
+        }
+        else {
+            this.eventType = EventType.UNSUPPORTED;
+        }
+        this.userName = resultSet.getString("LOGON_USER");
+        this.rowId = resultSet.getString("ROW_ID");
+        this.rollbackFlag = false;
+        this.rsId = null;
+        this.hash = resultSet.getLong("HASH");
+        this.undoSql = getUndo(resultSet);
         if (this.tableName != null) {
             this.tableId = new TableId(catalogName, tablespaceName, tableName);
         }
@@ -201,6 +275,11 @@ public class LogMinerEventRow {
         return rs.getString(TX_ID);
     }
 
+    private String getTransactionId(ResultSet rs) throws SQLException {
+        byte[] result = rs.getBytes("XID");
+        return result != null ? HexConverter.convertToHexString(result) : null;
+    }
+
     private Instant getChangeTime(ResultSet rs) throws SQLException {
         final Timestamp result = rs.getTimestamp(CHANGE_TIME, UTC_CALENDAR);
         return result != null ? result.toInstant() : null;
@@ -209,6 +288,23 @@ public class LogMinerEventRow {
     private Scn getScn(ResultSet rs) throws SQLException {
         final String scn = rs.getString(SCN);
         return Strings.isNullOrEmpty(scn) ? Scn.NULL : Scn.valueOf(scn);
+    }
+
+    private Scn getStartScn(ResultSet rs) throws SQLException {
+        final String scn = rs.getString("START_SCN");
+        return Strings.isNullOrEmpty(scn) ? Scn.NULL : Scn.valueOf(scn);
+    }
+
+    private Scn getCommitScn(ResultSet rs) throws SQLException {
+        final String scn = rs.getString("COMMIT_SCN");
+        return Strings.isNullOrEmpty(scn) ? Scn.NULL : Scn.valueOf(scn);
+    }
+
+    private String getUndo(ResultSet rs) throws SQLException {
+        int lobLimitCounter = 9; // todo : decide on approach (XStream chunk option) and Lob limit
+
+        String undosql = rs.getString("UNDO_SQL");
+        return undosql;
     }
 
     private String getSqlRedo(ResultSet rs) throws SQLException {
@@ -238,6 +334,11 @@ public class LogMinerEventRow {
         }
 
         return result.toString();
+    }
+
+    private String getUndoSql(ResultSet rs) throws SQLException {
+        String undoSql = rs.getString("UNDO_SQL");
+        return undoSql;
     }
 
     @Override

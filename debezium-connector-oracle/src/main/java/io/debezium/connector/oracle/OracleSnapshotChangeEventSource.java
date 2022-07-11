@@ -127,7 +127,12 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         // SCN of "now" represents the same timestamp as a newly created table that should be captured; in that case
         // we'd get a ORA-01466 when running the flashback query for doing the snapshot
         do {
-            currentScn = jdbcConnection.getCurrentScn();
+            if (OracleConnectorConfig.LogMiningStrategy.FLASH_BACK_QUERY.equals(connectorConfig.getLogMiningStrategy())) {
+                currentScn = jdbcConnection.getFlashBackCurrentScn();
+            }
+            else {
+                currentScn = jdbcConnection.getCurrentScn();
+            }
         } while (areSameTimestamp(latestTableDdlScn.orElse(null), currentScn));
 
         ctx.offset = OracleOffsetContext.create()

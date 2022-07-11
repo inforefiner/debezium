@@ -80,6 +80,24 @@ public class LogMinerDmlParser implements DmlParser {
         throw new DmlParserException("Unknown supported SQL '" + sql + "'");
     }
 
+    @Override
+    public LogMinerDmlEntry parseUndoSql(String sql, Table table, String txId) {
+        if (table == null) {
+            throw new DmlParserException("DML parser requires a non-null table");
+        }
+        if (sql != null && sql.length() > 0) {
+            switch (sql.charAt(0)) {
+                case 'i':
+                    return parseInsertUndoSql(sql, table);
+                case 'u':
+                    return parseUpdate(sql, table);
+                case 'd':
+                    return parseDelete(sql, table);
+            }
+        }
+        throw new DmlParserException("Unknown supported SQL '" + sql + "'");
+    }
+
     /**
      * Parse an {@code INSERT} SQL statement.
      *
@@ -104,6 +122,36 @@ public class LogMinerDmlParser implements DmlParser {
             parseColumnValuesClause(sql, index, columnNames, newValues, table);
 
             return LogMinerDmlEntryImpl.forInsert(newValues);
+        }
+        catch (Exception e) {
+            throw new DmlParserException("Failed to parse insert DML: '" + sql + "'", e);
+        }
+    }
+
+    /**
+     * Parse an {@code INSERT} SQL statement.
+     *
+     * @param sql the sql statement
+     * @param table the table
+     * @return the parsed DML entry record or {@code null} if the SQL was not parsed
+     */
+    private LogMinerDmlEntry parseInsertUndoSql(String sql, Table table) {
+        try {
+            // advance beyond "insert into "
+            int index = INSERT_INTO_LENGTH;
+
+            // parse table
+            index = parseTableName(sql, index);
+
+            // capture column names
+            String[] columnNames = new String[table.columns().size()];
+            index = parseColumnListClause(sql, index, columnNames);
+
+            // capture values
+            Object[] newValues = new Object[table.columns().size()];
+            parseColumnValuesClause(sql, index, columnNames, newValues, table);
+
+            return LogMinerDmlEntryImpl.forDelete(newValues);
         }
         catch (Exception e) {
             throw new DmlParserException("Failed to parse insert DML: '" + sql + "'", e);

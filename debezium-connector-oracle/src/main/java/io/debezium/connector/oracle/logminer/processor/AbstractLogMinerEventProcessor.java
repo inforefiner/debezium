@@ -57,12 +57,12 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
     private final EventDispatcher<TableId> dispatcher;
     private final OracleStreamingChangeEventSourceMetrics metrics;
     private final TransactionReconciliation reconciliation;
-    private final LogMinerDmlParser dmlParser;
+    protected final LogMinerDmlParser dmlParser;
     private final SelectLobParser selectLobParser;
 
     protected final Counters counters;
 
-    private Scn lastProcessedScn = Scn.NULL;
+    protected Scn lastProcessedScn = Scn.NULL;
 
     public AbstractLogMinerEventProcessor(ChangeEventSourceContext context,
                                           OracleConnectorConfig connectorConfig,
@@ -454,7 +454,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
      * @return true if another row exists, false otherwise
      * @throws SQLException if there was a database exception
      */
-    private boolean hasNextWithMetricsUpdate(ResultSet resultSet) throws SQLException {
+    protected boolean hasNextWithMetricsUpdate(ResultSet resultSet) throws SQLException {
         Instant start = Instant.now();
         if (resultSet.next()) {
             metrics.addCurrentResultSetNext(Duration.between(start, Instant.now()));
@@ -504,9 +504,9 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
      * @throws SQLException if a database exception occurred
      * @throws InterruptedException if the event dispatch was interrupted
      */
-    private Table dispatchSchemaChangeEventAndGetTableForNewCapturedTable(TableId tableId,
-                                                                          OracleOffsetContext offsetContext,
-                                                                          EventDispatcher<TableId> dispatcher)
+    protected Table dispatchSchemaChangeEventAndGetTableForNewCapturedTable(TableId tableId,
+                                                                            OracleOffsetContext offsetContext,
+                                                                            EventDispatcher<TableId> dispatcher)
             throws SQLException, InterruptedException {
         LOGGER.info("Table '{}' is new and will now be captured.", tableId);
         offsetContext.event(tableId, Instant.now());

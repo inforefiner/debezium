@@ -730,7 +730,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          * This option does not use CONTINUOUS_MINE option
          * This is default value
          */
-        CATALOG_IN_REDO("redo_log_catalog");
+        CATALOG_IN_REDO("redo_log_catalog"),
+        FLASH_BACK_QUERY("flash_back_query");
 
         private final String value;
 

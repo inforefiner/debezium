@@ -38,6 +38,7 @@ import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.infinispan.InfinispanLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.memory.MemoryFlashBackEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.memory.MemoryLogMinerEventProcessor;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
@@ -140,8 +141,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             pauseBetweenMiningSessions();
                             continue;
                         }
-
-                        flushStrategy.flush(jdbcConnection.getCurrentScn());
+                        if (!OracleConnectorConfig.LogMiningStrategy.FLASH_BACK_QUERY.equals(connectorConfig.getLogMiningStrategy())) {
+                            flushStrategy.flush(jdbcConnection.getCurrentScn());
+                        }
 
                         if (hasLogSwitchOccurred()) {
                             // This is the way to mitigate PGA leaks.
@@ -159,6 +161,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                         if (context.isRunning()) {
                             startMiningSession(jdbcConnection, startScn, endScn);
+                            // start flush
                             startScn = processor.process(startScn, endScn);
 
                             captureSessionMemoryStatistics(jdbcConnection);
@@ -205,6 +208,11 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             return new InfinispanLogMinerEventProcessor(context, connectorConfig, jdbcConnection, dispatcher,
                     partition, offsetContext, schema, streamingMetrics);
         }
+
+        if (OracleConnectorConfig.LogMiningStrategy.FLASH_BACK_QUERY.equals(connectorConfig.getLogMiningStrategy())) {
+            return new MemoryFlashBackEventProcessor(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, streamingMetrics);
+        }
+
         return new MemoryLogMinerEventProcessor(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, streamingMetrics);
     }
 
@@ -388,18 +396,20 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if mining session failed to start
      */
     public void startMiningSession(OracleConnection connection, Scn startScn, Scn endScn) throws SQLException {
-        LOGGER.trace("Starting mining session startScn={}, endScn={}, strategy={}, continuous={}",
-                startScn, endScn, strategy, isContinuousMining);
-        try {
-            Instant start = Instant.now();
-            connection.executeWithoutCommitting(SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining));
-            streamingMetrics.addCurrentMiningSessionStart(Duration.between(start, Instant.now()));
-        }
-        catch (SQLException e) {
-            // Capture the database state before throwing the exception up
-            LogMinerDatabaseStateWriter.write(connection);
-            throw e;
-        }
+        /*
+         * LOGGER.trace("Starting mining session startScn={}, endScn={}, strategy={}, continuous={}",
+         * startScn, endScn, strategy, isContinuousMining);
+         * try {
+         * Instant start = Instant.now();
+         * connection.executeWithoutCommitting(SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining));
+         * streamingMetrics.addCurrentMiningSessionStart(Duration.between(start, Instant.now()));
+         * }
+         * catch (SQLException e) {
+         * // Capture the database state before throwing the exception up
+         * LogMinerDatabaseStateWriter.write(connection);
+         * throw e;
+         * }
+         */
     }
 
     /**
@@ -592,7 +602,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         if (connectorConfig.isRacSystem()) {
             return new RacCommitLogWriterFlushStrategy(connectorConfig, jdbcConfiguration, streamingMetrics);
         }
-        return new CommitLogWriterFlushStrategy(jdbcConnection);
+        return new CommitLogWriterFlushStrategy(jdbcConnection, connectorConfig);
     }
 
     /**
