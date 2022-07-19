@@ -67,7 +67,7 @@ public class HistoryRecordComparator {
     }
 
     protected boolean isSameSource(Document source1, Document source2) {
-        logger.info("source1 class:{},source2 class:{}", source1.getClass(), source2.getClass());
+        logger.debug("source1 class:{},source2 class:{}", source1.getClass(), source2.getClass());
         return source1.equalsSource(source2);
     }
 }
