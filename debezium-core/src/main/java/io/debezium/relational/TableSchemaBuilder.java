@@ -54,6 +54,7 @@ public class TableSchemaBuilder {
     private final Schema sourceInfoSchema;
     private final FieldNamer<Column> fieldNamer;
     private final CustomConverterRegistry customConverterRegistry;
+    private final RelationalDatabaseConnectorConfig config;
 
     /**
      * Create a new instance of the builder.
@@ -69,6 +70,17 @@ public class TableSchemaBuilder {
         this.sourceInfoSchema = sourceInfoSchema;
         this.fieldNamer = FieldNameSelector.defaultSelector(sanitizeFieldNames);
         this.customConverterRegistry = customConverterRegistry;
+        this.config = null;
+    }
+
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, SchemaNameAdjuster schemaNameAdjuster, CustomConverterRegistry customConverterRegistry,
+                              Schema sourceInfoSchema, boolean sanitizeFieldNames, RelationalDatabaseConnectorConfig config) {
+        this.schemaNameAdjuster = schemaNameAdjuster;
+        this.valueConverterProvider = valueConverterProvider;
+        this.sourceInfoSchema = sourceInfoSchema;
+        this.fieldNamer = FieldNameSelector.defaultSelector(sanitizeFieldNames);
+        this.customConverterRegistry = customConverterRegistry;
+        this.config = config;
     }
 
     /**
@@ -353,6 +365,30 @@ public class TableSchemaBuilder {
      * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
      */
     protected void addField(SchemaBuilder builder, Table table, Column column, ColumnMapper mapper) {
+
+        RelationalDatabaseConnectorConfig.ColumnCase upper = RelationalDatabaseConnectorConfig.ColumnCase.None;
+        if (config != null && config.getConfig().hasKey("column.case")) {
+            upper = RelationalDatabaseConnectorConfig.ColumnCase.valueOf(config.getConfig().getString("column.case"));
+        }
+        switch (upper) {
+            case LowerCase:
+                if (column instanceof ColumnImpl) {
+                    ((ColumnImpl) column).setRealName(column.name().toLowerCase(Locale.ROOT));
+                }
+                break;
+            case UpperCase:
+                if (column instanceof ColumnImpl) {
+                    ((ColumnImpl) column).setRealName(column.name().toUpperCase(Locale.ROOT));
+                }
+                break;
+            case None:
+                if (column instanceof ColumnImpl) {
+                    ((ColumnImpl) column).setRealName(column.name());
+                }
+            default:
+                break;
+        }
+
         final SchemaBuilder fieldBuilder = customConverterRegistry.registerConverterFor(table.id(), column)
                 .orElse(valueConverterProvider.schemaBuilder(column));
 

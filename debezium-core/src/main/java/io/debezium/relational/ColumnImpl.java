@@ -13,7 +13,9 @@ import java.util.Optional;
 import io.debezium.util.Strings;
 
 final class ColumnImpl implements Column, Comparable<Column> {
-    private final String name;
+    private String name;
+
+    private String realName;
     private final int position;
     private final int jdbcType;
     private final int nativeType;
@@ -73,6 +75,19 @@ final class ColumnImpl implements Column, Comparable<Column> {
     @Override
     public String name() {
         return name;
+    }
+
+    @Override
+    public String realName() {
+        return realName == null ? name : realName;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setRealName(String realName) {
+        this.realName = realName;
     }
 
     @Override

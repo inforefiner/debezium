@@ -51,6 +51,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     protected static final String TABLE_EXCLUDE_LIST_NAME = "table.exclude.list";
     protected static final String TABLE_WHITELIST_NAME = "table.whitelist";
     protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
+    protected static final String UPPER = "column.upper";
 
     protected static final Pattern SERVER_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
 
@@ -142,6 +143,37 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                 mode = parse(defaultValue);
             }
             return mode;
+        }
+    }
+
+    public enum ColumnCase implements EnumeratedValue {
+        /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@link BigDecimal} values, which are
+         * represented in change events in a binary form. This is precise but difficult to use.
+         */
+        None("None"),
+
+        /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as a string values. This is precise, it supports also special values
+         * but the type information is lost.
+         */
+        UpperCase("UpperCase"),
+
+        /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@code double} values. This may be less precise
+         * but is far easier to use.
+         */
+        LowerCase("LowerCase");
+
+        private final String value;
+
+        ColumnCase(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
         }
     }
 
@@ -378,6 +410,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(Field::isListOfRegex)
             .withDependents(TABLE_INCLUDE_LIST_NAME)
             .withDescription("The schemas for which events should be captured");
+
+    public static final Field UPPER_FIELD = Field.create(UPPER)
+            .withDisplayName("Include Schemas")
+            .withEnum(ColumnCase.class, ColumnCase.None)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 0))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isBoolean)
+            .withDependents(TABLE_INCLUDE_LIST_NAME)
+            .withDescription("The column names should be Upper/Lower case");
 
     /**
      * Old, backwards-compatible "whitelist" property.

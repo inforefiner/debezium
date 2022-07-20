@@ -20,7 +20,7 @@ import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 public class FieldNameSelector {
 
     public static FieldNamer<Column> defaultSelector(boolean sanitizeFieldNames) {
-        return sanitizeFieldNames ? new FieldNameCache<>(new FieldNameSanitizer<>(Column::name)) : Column::name;
+        return sanitizeFieldNames ? new FieldNameCache<>(new FieldNameSanitizer<>(Column::realName)) : Column::realName;
     }
 
     public static FieldNamer<String> defaultNonRelationalSelector(boolean sanitizeFieldNames) {

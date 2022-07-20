@@ -38,6 +38,8 @@ public interface Column extends Comparable<Column> {
      */
     String name();
 
+    String realName();
+
     /**
      * Get the position of the column in the table.
      *

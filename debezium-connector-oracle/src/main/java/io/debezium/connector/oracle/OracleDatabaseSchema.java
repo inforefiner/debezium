@@ -41,7 +41,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
-                        connectorConfig.getSanitizeFieldNames()),
+                        connectorConfig.getSanitizeFieldNames(), connectorConfig),
                 TableNameCaseSensitivity.INSENSITIVE.equals(tableNameCaseSensitivity),
                 connectorConfig.getKeyMapper());
 
